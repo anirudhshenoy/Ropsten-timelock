@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<html>
+<head>
+	<title>ETH Test Page</title>
+</head>
+
+<body>
+	<h2>Ethereum Time-Lock Contract</h2>
+	
+		
+			<label for="amount" class="col-lg-2 control-label">Amount in Ether :</label>
+			<input id="amount" class="col-lg-2" type="text"><br><br>
+	   		
+	   		<label for="time" class="col-lg-2 control-label">Lock for (secs):</label>
+	    	<input id="time" class="col-lg-2" type="text"> <br> <br>
+
+			<button id="button" class="col-lg-2">Lock Funds</button><br><br>
+			<button id="button-releasetime" class="col-lg-2">Get Release Time</button><br><br>
+			<button id="button-withdraw" class="col-lg-2">Withdraw Funds</button><br>
+			<h3 id="status"></h3>
+			
+
+
+ <script src="js/web3.min.js"></script>
+ <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script>
+	 if (typeof web3 !== 'undefined') {
+            web3 = new Web3(web3.currentProvider);
+        } else {
+            // set the provider you want from Web3.providers
+            web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/'));
+        }
+
+      web3.eth.defaultAccount = web3.eth.accounts[0];
+      
+      var ContractObject= web3.eth.contract([
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "withdraw_funds",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_locktime",
+          "type": "uint256"
+        }
+      ],
+      "name": "set",
+      "outputs": [],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "get_funds",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "get_releaseTime",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "funds_withdrawn",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "name": "locktime",
+          "type": "uint256"
+        }
+      ],
+      "name": "funds_locked",
+      "type": "event"
+    }
+  ]);
+      var SimpleContract= ContractObject.at('0x48B5628421C6A22790F018Fd76525853E5c49a1F');
+      console.log(web3.eth.getBalance(web3.eth.defaultAccount));
+
+      var funds_locked_event=SimpleContract.funds_locked();
+      var funds_withdrawn_event=SimpleContract.funds_withdrawn();
+      var withdraw_hash;
+
+      funds_locked_event.watch(function(error,result){
+      	if(!error){
+  			$("#status").text("Receieved "+ web3.fromWei(result.args.amount,"ether") + " ETH. Locked for " + result.args.locktime + " secs.")
+      	}
+      });
+
+      funds_withdrawn_event.watch(function(error, result){
+      	if(!error){
+  			$("#status").text("Transferred "+ web3.fromWei(result.args.amount,"ether") +" ETH. Tx Hash: " + withdraw_hash);
+      	}
+      });
+      	
+	      
+       $("#button").click(function(){
+       		SimpleContract.set(parseInt($("#time").val(),10),{from:web3.eth.defaultAccount,
+       			value:web3.toWei(parseInt($("#amount").val(),10),"ether")});
+      		});
+
+       $("#button-releasetime").click(function(){
+      		SimpleContract.get_releaseTime(function(err, result) {
+  				if(!err){
+  					if(result.toNumber()!=0){
+				var date1=new Date (result.toNumber() *1000);
+				var current_date=new Date().getTime(); 
+      			$("#status").text(date1.toUTCString() + " Time Remaining:"+ ((result.toNumber()*1000-current_date)/1000) + " secs");
+      			
+      		}}});
+  			});
+
+       $("#button-withdraw").click(function(){
+      		//SimpleContract.withdraw_funds(function (err, result)
+      		//	{console.log(result);})
+      		SimpleContract.withdraw_funds(function(err,result){
+      			if(!err){
+      				withdraw_hash=result;
+      				console.log(result);
+      			}
+      		});
+      		
+      	
+      	});
+  								
+			
+			
+  		
+
+      	
+
+
+</script>
+</body>
+</html>
